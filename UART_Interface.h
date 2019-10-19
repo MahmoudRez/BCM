@@ -59,7 +59,7 @@
 #define Disable 0
 #define Enable  1
 #define UART_RecieveInterruptState Enable
-#define UART_TransmitInterruptState Disable
+#define UART_TransmitInterruptState Enable
 #define UART_UdrInterruptState Disable
 
 		/******************************************************************/
@@ -70,6 +70,9 @@ Inputs:  NA.
 OutPut: NA.
 */
 extern void UART_vidInitialize(void);
+
+void UART_vidDeInitialize(void);
+
 		/******************************************************************/
 
 /*
@@ -77,7 +80,7 @@ Description:Send word from  UART Module
 Inputs:  u16 has the word which Transmit.
 OutPut: NA.
 */
-extern void UART_vidSendWord(uint16 Copy_u16DataWord);
+extern void UART_vidSendWord(uint8 Copy_u8DataWord);
 		/******************************************************************/
 
 /*
@@ -85,7 +88,7 @@ Description:Recieve word from UART Module
 Inputs: Address of a variable which save the data which received.
 OutPut: NA.
 */
-extern void UART_vidReceiveWord(uint8 * Copy_Pu16DataWord);
+extern void UART_vidReceiveWord(uint8 * Copy_Pu8DataWord);
 		/******************************************************************/
 
 /*

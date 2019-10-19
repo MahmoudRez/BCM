@@ -109,6 +109,7 @@ void UART_vidInitialize(void)
 	/*Select if to use INTP*/
 	#if(UART_RecieveInterruptState==Enable)
 		SET_BIT(UCSRB,UCSRB_RXCIE);
+		SREG|=0x80;
 	#elif(UART_RecieveInterruptState==Disable)
 
 		CLR_BIT(UCSRB,UCSRB_RXCIE);
@@ -116,6 +117,7 @@ void UART_vidInitialize(void)
 
 	#if(UART_TransmitInterruptState==Enable)
 		SET_BIT(UCSRB,UCSRB_TXCIE);
+		SREG|=0x80;
 	#elif(UART_RecieveInterruptState==Disable)
 		CLR_BIT(UCSRB,UCSRB_TXCIE);
 	#endif
@@ -141,21 +143,21 @@ void UART_vidInitialize(void)
 		CLR_BIT(UCSRB,UCSRB_TXEN);
 	#endif
 }
+void UART_vidDeInitialize(void)
+{
+	CLR_BIT(UCSRB,UCSRB_RXEN);
+	CLR_BIT(UCSRB,UCSRB_TXEN);
+}
+
 /*
 Description:Send word from  UART Module
 Inputs:  u16 has the word which Transmit.
 OutPut: NA.
 */
-void UART_vidSendWord(uint16 Copy_u16DataWord)
+void UART_vidSendWord(uint8 Copy_u8DataWord)
 {
-	/*wait on UDR to be Empty*/
-	while((GET_BIT(UCSRA,UCSRA_UDRE)==0));
-	#if UART_DataLength == UART_9_Bits
-		/*Write the 9th bit*/
-
-	#endif
 	/*Write  on Data Register*/
-	UDR = (uint8)Copy_u16DataWord;
+	UDR = Copy_u8DataWord;
 
 }
 
@@ -165,16 +167,10 @@ Description:Recieve word from UART Module
 Inputs: Address of a variable which save the data which received.
 OutPut: NA.
 */
-void UART_vidReceiveWord(uint8 * Copy_Pu16DataWord)
+void UART_vidReceiveWord(uint8 * Copy_Pu8DataWord)
 {
-	/*Wait till Data is received*/
-	while ((GET_BIT(UCSRA,UCSRA_RXC))==0);
-	#if UART_DataLength == UART_9_Bits
-		/*Read the 9th bit*/
-
-	#endif
 	/*Copy data from UDR*/
-	*Copy_Pu16DataWord = UDR;
+	*Copy_Pu8DataWord = UDR;
 }
 
 

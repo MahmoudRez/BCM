@@ -25,5 +25,7 @@ typedef double                float64;
 
 typedef enum { NOK, OK } STD_Fun_t;
 
+#define NULL (void *)0
+
 
 #endif /* STD_TYPES_H_ */

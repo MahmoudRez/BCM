@@ -11,12 +11,7 @@
 #define AVR_UART_REG_H_
 
 #include "STD_Types.h"
-/*
- * AVR_UART_REG.h
- *
- *  Created on: Mar 8, 2019
- *      Author: alx
- */
+
 
 /*USART I/O Data Register Address –UDR*/
 #define UDR (*((volatile uint8*)0x2C))
