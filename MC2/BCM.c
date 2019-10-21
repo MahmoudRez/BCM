@@ -4,23 +4,25 @@
  *  Created on: Oct 19, 2019
  *      Author: Mahmoud Rezk Mahmoud
  */
+#include "LCD.h"
 #include "BCM.h"
 #include "UART_Interface.h"
 
+#include "REG_Lib.h"
 
 
-typedef enum State
+typedef enum
 {
-	idle,
+	Txidle,
 	sending_bcm_id,
 	sending_no_ofbytes,
 	sending_byte,
 	sending_cs
 }STATE_TxStatus;
 
-typedef enum State
+typedef enum
 {
-	idle,
+	Rxidle,
 	receiving_id,
 	receiving_numberofbytes,
 	receiving_data,
@@ -40,9 +42,10 @@ ST_BcmFrame g_St_BCM_RxrequestFrame;
 
 BCM_ConfigType * BCM_ptrConfigType;
 
-static volatile BCM_ptrToFunc BCM_ptrConsumerFunc= NULL;
-static volatile uint8 g_u8BcmTxStatus=idle;
-static volatile uint8 g_u8BcmRxStatus=idle;
+static volatile BCM_ptrToFuncTX BCM_ptrConsumerFuncTX= NULL;
+static volatile BCM_ptrToFuncRX BCM_ptrConsumerFuncRX= NULL;
+static volatile STATE_TxStatus g_u8BcmTxStatus=Txidle;
+static volatile STATE_RxStatus g_u8BcmRxStatus=Rxidle;
 static volatile uint8 g_u8BcmTxFlag=RESET;
 static volatile uint8 g_u8BcmTxReqFlag=UNLOCK;
 static volatile uint8 g_u8BcmRxReqFlag=LOCK;
@@ -62,15 +65,15 @@ static void BCM_rxCallBack(void)
 	static volatile uint16 LOC_Counter=0;
 	uint8 LOC_RxData;
 	UART_vidReceiveWord(&LOC_RxData);
-	if(LOCK==g_u8BcmTxReqFlag)
+	if(LOCK==g_u8BcmRxReqFlag)
 	{
 
 	}
-	else if (UNLOCK==g_u8BcmTxReqFlag)
+	else if (UNLOCK==g_u8BcmRxReqFlag)
 	{
 		switch(g_u8BcmRxStatus)
 		{
-		case idle:
+		case Rxidle:
 			LOC_Counter=0;
 			if(LOC_RxData==g_St_BCM_RxrequestFrame.BCM_id)
 			{
@@ -78,7 +81,6 @@ static void BCM_rxCallBack(void)
 			}
 			break;
 		case receiving_id:
-
 			g_St_BCM_RxrequestFrame.BCM_noOfBytes|=(uint16)LOC_RxData;
 			g_u8BcmRxStatus=receiving_numberofbytes;
 			break;
@@ -94,7 +96,7 @@ static void BCM_rxCallBack(void)
 				g_St_BCM_RxrequestFrame.Data++;
 				LOC_Counter++;
 			}
-			else if(LOC_Counter == g_St_BCM_RxrequestFrame.BCM_noOfBytes)
+			if(LOC_Counter == (g_St_BCM_RxrequestFrame.BCM_noOfBytes))
 			{
 				g_u8BcmRxStatus=recieving_cs;
 			}
@@ -161,10 +163,11 @@ EnmBCMError_t BCM_DeInit ( void )
 
 void BCM_TxDispatch(void)
 {
+
 	static uint8 LOC_dataCounter=0;
 	switch(g_u8BcmTxStatus)
 	{
-	case idle:
+	case Txidle:
 		if(g_u8BcmTxReqFlag==LOCK)
 		{
 			UART_vidSendWord(g_st_SEND_request.BCM_id);
@@ -203,6 +206,7 @@ void BCM_TxDispatch(void)
 
 		}
 		break;
+
 	case sending_byte:
 		if(g_u8BcmTxFlag==SET)
 		{
@@ -235,12 +239,13 @@ void BCM_TxDispatch(void)
 		break;
 
 	case sending_cs:
+
 		if(g_u8BcmTxFlag==SET)
 		{
 			g_u8BcmTxFlag=RESET;
-			g_u8BcmTxStatus=idle;
+			g_u8BcmTxStatus=Txidle;
 			g_u8BcmTxReqFlag=UNLOCK;
-			BCM_ptrConsumerFunc();
+			BCM_ptrConsumerFuncTX();
 		}
 		else
 		{
@@ -254,7 +259,7 @@ void BCM_TxDispatch(void)
 
 
 }
-EnmBCMError_t BCM_Send(uint8 * COPY_ptrData,uint16 COPY_u16BufferSize, BCM_ptrToFunc COPY_BCM_ptrConsumerFunc)
+EnmBCMError_t BCM_Send(uint8 * COPY_ptrData,uint16 COPY_u16BufferSize, BCM_ptrToFuncTX COPY_BCM_ptrConsumerFunc)
 {
 	EnmBCMError_t LOC_u8BcmError=bcm_ok;
 	if(COPY_u16BufferSize==0)
@@ -270,10 +275,10 @@ EnmBCMError_t BCM_Send(uint8 * COPY_ptrData,uint16 COPY_u16BufferSize, BCM_ptrTo
 		if(g_u8BcmTxReqFlag==UNLOCK)
 		{
 			g_st_SEND_request.BCM_id=BCM_ID;
-			g_st_SEND_request.BCM_noOfBytes=0;
+			g_st_SEND_request.BCM_noOfBytes=COPY_u16BufferSize;
 			g_st_SEND_request.Data=COPY_ptrData;
 			g_st_SEND_request.BCM_cs=0;
-			BCM_ptrConsumerFunc = COPY_BCM_ptrConsumerFunc;
+			BCM_ptrConsumerFuncTX = COPY_BCM_ptrConsumerFunc;
 			g_u8BcmTxReqFlag=LOCK;
 		}
 		else
@@ -289,20 +294,23 @@ EnmBCMError_t BCM_Send(uint8 * COPY_ptrData,uint16 COPY_u16BufferSize, BCM_ptrTo
 
 void BCM_RxDispatch(void)
 {
+	LCD_NUM_DISP(1,3,g_u8BcmRxReqFlag);
 	if(g_u8BcmRxStatus==frame_complete)
 	{
-		g_u8BcmRxReqFlag=LOCK;
-		g_u8BcmRxStatus=idle;
 
+		g_u8BcmRxReqFlag=LOCK;
+		g_u8BcmRxStatus=Rxidle;
+		g_St_BCM_RxrequestFrame.Data -=  g_St_BCM_RxrequestFrame.BCM_noOfBytes;
+		BCM_ptrConsumerFuncRX(g_St_BCM_RxrequestFrame.Data,g_St_BCM_RxrequestFrame.BCM_noOfBytes,&g_u8BcmRxStatus);
 
 	}
 	else if(g_u8BcmRxStatus==frame_error)
 	{
-		g_u8BcmRxStatus=idle;
+		g_u8BcmRxStatus=Rxidle;
 	}
 
 }
-EnmBCMError_t BCM_SetupRxBuffer(uint8* COPY_ptrRxBuffer,uint16 COPY_u16BufferSize)
+EnmBCMError_t BCM_SetupRxBuffer(uint8* COPY_ptrRxBuffer,uint16 COPY_u16BufferSize,BCM_ptrToFuncRX COPY_BCM_ptrConsumerFunc)
 {
 	EnmBCMError_t LOC_u8BcmError=bcm_ok;
 	if(NULL==COPY_ptrRxBuffer)
@@ -317,12 +325,17 @@ EnmBCMError_t BCM_SetupRxBuffer(uint8* COPY_ptrRxBuffer,uint16 COPY_u16BufferSiz
 	{
 		LOC_u8BcmError=locked_buffer;
 	}
+	else if(NULL == COPY_BCM_ptrConsumerFunc)
+	{
+		LOC_u8BcmError=invalid_adress;
+	}
 	else
 	{
-		g_St_BCM_RxrequestFrame.BCM_id=0;
-		g_St_BCM_RxrequestFrame.BCM_noOfBytes=COPY_u16BufferSize;
+		g_St_BCM_RxrequestFrame.BCM_id=BCM_ID;
+		g_St_BCM_RxrequestFrame.BCM_noOfBytes=0;
 		g_St_BCM_RxrequestFrame.Data=COPY_ptrRxBuffer;
 		g_St_BCM_RxrequestFrame.BCM_cs=0;
+		BCM_ptrConsumerFuncRX = COPY_BCM_ptrConsumerFunc;
 	}
 	return LOC_u8BcmError;
 }
