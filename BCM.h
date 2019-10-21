@@ -14,10 +14,15 @@ typedef void (*BCM_ptrToFunc)(void);
 
 typedef enum
 {
+	bcm_ok,
+	bcm_nok,
 	repeted_init,
 	bcm_busy,
 	void_size,
-	invalid_adress
+	invalid_adress,
+	repeted_deinit,
+	locked_buffer,
+
 }EnmBCMError_t;
 
 
@@ -35,5 +40,7 @@ extern EnmBCMError_t BCM_DeInit ( void ) ;
 extern void BCM_RxDispatch(void);
 extern void BCM_TxDispatch(void);
 extern EnmBCMError_t BCM_Send(uint8 * COPY_ptrData,uint16 COPY_u16BufferSize, BCM_ptrToFunc COPY_BCM_ptrConsumerFunc);
-extern EnmBCMError_t BCM_Receive(void);
+extern EnmBCMError_t BCM_SetupRxBuffer(uint8* COPY_ptrRxBuffer,uint16 COPY_u16BufferSize);
+extern void BCM_vidRxBufferUnlock(void);
+
 #endif /* BCM_H_ */
