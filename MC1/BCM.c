@@ -1,16 +1,25 @@
-/*
- * BCM.c
+/******************************************************************************
  *
+ * Module: Basic Communication Module (BCM) service layer
+ *
+ * File Name: BCM.c
+ *
+ * Description: Source file for BCM Driver
  *  Created on: Oct 19, 2019
  *      Author: Mahmoud Rezk Mahmoud
  */
-#include "LCD.h"
-#include "BCM.h"
-#include "UART_Interface.h"
 
+/*******************************************************************************
+ *                       	Included Libraries                                 *
+ *******************************************************************************/
+#include "BCM.h"
 #include "REG_Lib.h"
 
+/*******************************************************************************
+ *                         Types Declaration                                   *
+ *******************************************************************************/
 
+/************************ EnmBCM_TxDispatch_t **********************************/
 typedef enum
 {
 	Txidle,
@@ -19,6 +28,9 @@ typedef enum
 	sending_byte,
 	sending_cs
 }STATE_TxStatus;
+
+/************************ EnmBCM_RxDispatch_t **********************************/
+
 
 typedef enum
 {
@@ -38,6 +50,12 @@ typedef struct
 	uint8 * Data;
 	uint8 BCM_cs;
 }ST_BcmFrame;
+
+/*******************************************************************************
+ *                           Global Variables                                  *
+ *******************************************************************************/
+
+
 ST_BcmFrame g_St_BCM_RxrequestFrame;
 
 BCM_ConfigType * BCM_ptrConfigType;
@@ -49,17 +67,38 @@ static volatile STATE_RxStatus g_u8BcmRxStatus=Rxidle;
 static volatile uint8 g_u8BcmTxFlag=RESET;
 static volatile uint8 g_u8BcmTxReqFlag=UNLOCK;
 static volatile uint8 g_u8BcmRxReqFlag=LOCK;
-
 static volatile ST_BcmFrame g_st_SEND_request;
+static volatile uint8 g_u8BcmInitFlag=DEINIT;
 
 
-
-uint8 g_u8BcmInitFlag=DEINIT;
-
+/*******************************************************************************
+ * Function Name:	BCM_txCallBack
+ *
+ * Description: 	static Callback function from UART_Tx interrupt to continue
+ * 					sending of data
+ *
+ * Inputs:			NULL
+ *
+ * Outputs:			NULL
+ *
+ * Return:			NULL
+ *******************************************************************************/
 static void BCM_txCallBack(void)
 {
 	g_u8BcmTxFlag=SET;
 }
+/*******************************************************************************
+ * Function Name:	BCM_rxCallBack
+ *
+ * Description: 	static Callback function from UART_Rx interrupt to continue
+ * 					receiving of data
+ *
+ * Inputs:			NULL
+ *
+ * Outputs:			NULL
+ *
+ * Return:			NULL
+ *******************************************************************************/
 static void BCM_rxCallBack(void)
 {
 	static volatile uint16 LOC_Counter=0;
@@ -129,6 +168,23 @@ static void BCM_rxCallBack(void)
 
 	}
 }
+
+
+/*******************************************************************************
+ *                      Functions Definitions                                  *
+ *******************************************************************************/
+
+/*******************************************************************************
+ * Function Name:	BCM_Init
+ *
+ * Description: 	Initialize the BCM Driver
+ *
+ * Inputs:			Pointer to configuration structure
+ *
+ * Outputs:			NULL
+ *
+ * Return:			Status to check function execution
+ *******************************************************************************/
 EnmBCMError_t BCM_Init (const BCM_ConfigType * ConfigPtr )
 {
 	EnmBCMError_t LOC_u8BcmError=bcm_ok;
@@ -147,7 +203,17 @@ EnmBCMError_t BCM_Init (const BCM_ConfigType * ConfigPtr )
 	g_u8BcmInitFlag= INIT;
 	return LOC_u8BcmError;
 }
-
+/*******************************************************************************
+ * Function Name:	BCM_DeInit
+ *
+ * Description: 	Disable the BCM Driver
+ *
+ * Inputs:			NULL
+ *
+ * Outputs:			NULL
+ *
+ * Return:			Status to check function execution
+ *******************************************************************************/
 EnmBCMError_t BCM_DeInit ( void )
 {
 	EnmBCMError_t LOC_u8BcmError=bcm_ok;
@@ -168,6 +234,17 @@ EnmBCMError_t BCM_DeInit ( void )
 
 	return LOC_u8BcmError;
 }
+/*******************************************************************************
+ * Function Name:	BCM_TxDispatch
+ *
+ * Description: 	Check status for sending communication in BCM
+ *
+ * Inputs:			NULL
+ *
+ * Outputs:			NULL
+ *
+ * Return:			NULL
+ *******************************************************************************/
 
 void BCM_TxDispatch(void)
 {
@@ -267,6 +344,19 @@ void BCM_TxDispatch(void)
 
 
 }
+/*******************************************************************************
+ * Function Name:	BCM_Send
+ *
+ * Description: 	start the sending communication
+ *
+ * Inputs:			pointer to array	(uint8)
+ * 					uint16 size of Data array
+ * 					pointer to consumer function
+ *
+ * Outputs:			NULL
+ *
+ * Return:			Status to check function execution
+ *******************************************************************************/
 EnmBCMError_t BCM_Send(uint8 * COPY_ptrData,uint16 COPY_u16BufferSize, BCM_ptrToFuncTX COPY_BCM_ptrConsumerFunc)
 {
 	EnmBCMError_t LOC_u8BcmError=bcm_ok;
@@ -299,7 +389,17 @@ EnmBCMError_t BCM_Send(uint8 * COPY_ptrData,uint16 COPY_u16BufferSize, BCM_ptrTo
 
 	return LOC_u8BcmError;
 }
-
+/*******************************************************************************
+ * Function Name:	BCM_RxDispatch
+ *
+ * Description: 	Check status for receiving communication in BCM
+ *
+ * Inputs:			NULL
+ *
+ * Outputs:			NULL
+ *
+ * Return:			NULL
+ *******************************************************************************/
 void BCM_RxDispatch(void)
 {
 	LCD_NUM_DISP(1,3,g_u8BcmRxReqFlag);
@@ -318,6 +418,19 @@ void BCM_RxDispatch(void)
 	}
 
 }
+/*******************************************************************************
+ * Function Name:	BCM_SetupRxBuffer
+ *
+ * Description: 	Start the receiving communication
+ *
+ * Inputs:			 array size 	(uint16)
+ * 					pointer to consumer function
+ *
+ * Outputs:			pointer to array 		(uint8)
+ *
+ *
+ * Return:			Status to check function execution
+ *******************************************************************************/
 EnmBCMError_t BCM_SetupRxBuffer(uint8* COPY_ptrRxBuffer,uint16 COPY_u16BufferSize,BCM_ptrToFuncRX COPY_BCM_ptrConsumerFunc)
 {
 	EnmBCMError_t LOC_u8BcmError=bcm_ok;
@@ -347,7 +460,19 @@ EnmBCMError_t BCM_SetupRxBuffer(uint8* COPY_ptrRxBuffer,uint16 COPY_u16BufferSiz
 	}
 	return LOC_u8BcmError;
 }
-
+/*******************************************************************************
+ * Function Name:	BCM_vidRxBufferUnlock
+ *
+ * Description: 	Unlock the receiving buffer to allow another
+ * 					another receive request
+ *
+ * Inputs:			NULL
+ *
+ * Outputs:			NULL
+ *
+ *
+ * Return:			NULL
+ *******************************************************************************/
 void BCM_vidRxBufferUnlock(void)
 {
 	g_u8BcmRxReqFlag=UNLOCK;
